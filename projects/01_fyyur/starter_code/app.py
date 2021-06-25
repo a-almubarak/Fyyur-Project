@@ -11,6 +11,8 @@ from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql.schema import ForeignKey
 from sqlalchemy.sql.sqltypes import ARRAY
 from forms import *
 from flask_migrate import Migrate
@@ -47,6 +49,8 @@ class Venue(db.Model):
     looking_for = db.Column(db.Boolean)
     seeking_description = db.Column(db.String())
 
+    artists = db.relationship('Artist',secondary='Show')
+
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
 class Artist(db.Model):
@@ -63,11 +67,19 @@ class Artist(db.Model):
     website_link = db.Column(db.String(120))
     looking_for_venues = db.Column(db.Boolean())
     seeking_description = db.Column(db.String())
+    venues = db.relationship('Venue',secondary='Show')
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
+class Show(db.Model):
+  __tablename__='Show'
+  artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'),primary_key=True)
+  venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'),primary_key=True)
+  start_time = db.Column(db.String,nullable=False)
 
+  artist = db.relationship('Artist',backref=db.backref('artist_associations'))
+  venue = db.relationship('Venue',backref=db.backref('venue_associations'))
 #----------------------------------------------------------------------------#
 # Filters.
 #----------------------------------------------------------------------------#

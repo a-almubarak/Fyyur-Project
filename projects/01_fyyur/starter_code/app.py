@@ -12,6 +12,7 @@ import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
+from flask_migrate import Migrate
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -20,9 +21,11 @@ app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
 db = SQLAlchemy(app)
+migrate = Migrate(app,db)
 
 # TODO: connect to a local postgresql database
-
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123@localhost:5434/fyyur'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False #to supress the notification
 #----------------------------------------------------------------------------#
 # Models.
 #----------------------------------------------------------------------------#

@@ -16,6 +16,9 @@ from sqlalchemy.sql.schema import ForeignKey
 from sqlalchemy.sql.sqltypes import ARRAY
 from forms import *
 from flask_migrate import Migrate
+
+from datetime import datetime
+import sys
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -111,27 +114,24 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_shows should be aggregated based on number of upcoming shows per venue.
-  data=[{
-    "city": "San Francisco",
-    "state": "CA",
-    "venues": [{
-      "id": 1,
-      "name": "The Musical Hop",
-      "num_upcoming_shows": 0,
-    }, {
-      "id": 3,
-      "name": "Park Square Live Music & Coffee",
-      "num_upcoming_shows": 1,
-    }]
-  }, {
-    "city": "New York",
-    "state": "NY",
-    "venues": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }]
+  today = str(datetime.now())
+  data =[]
+  for city, state in db.session.query(Venue.city,Venue.state):
+    tmp= {}
+    tmp['city']=city
+    tmp['state']=state
+    query = db.session.query(Venue.id,Venue.name).filter(Venue.city==city and Venue.state == state)
+    venues = []
+    for id, name in query:
+      venues.append(
+        {
+          "id":id,
+          "name":name,
+          "num_upcoming_shows":db.session.query(Venue).join(Show).filter(Venue.id==id==Show.venue_id and today<Show.start_time).count()
+        }
+      )
+    tmp['venues']=venues
+    data.append(tmp)
   return render_template('pages/venues.html', areas=data);
 
 @app.route('/venues/search', methods=['POST'])
@@ -245,9 +245,39 @@ def create_venue_form():
 def create_venue_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
-
+  flag=False
+  try:
+   res = request.form
+   print(res)
+  #  print('Seeking talent is ==>',res['seeking_talent'])
+   venue = Venue(
+     name = res['name'],
+     city=res['city'],
+     state=res['state'],
+     address=res['address'],
+     phone=res['phone'],
+     genres = res['genres'],
+     facebook_link=res['facebook_link'],
+     image_link=res['image_link'],
+     website_link=res['website_link'],
+     seeking_description=res['seeking_description']
+   )
+   try: 
+    venue.looking_for=bool(res['seeking_talent']) 
+   except: 
+    venue.looking_for=False
+   db.session.add(venue)
+   db.session.commit()
+  except:
+    flag = True
+    db.session.rollback()
+    print(sys.exc_info())
+  finally:
+    if not flag:
+      flash('Venue ' + request.form['name'] + ' was successfully listed!')
+    else:
+      flash('An error occurred. '+request.form['name']+' Venue could not be listed.')
   # on successful db insert, flash success
-  flash('Venue ' + request.form['name'] + ' was successfully listed!')
   # TODO: on unsuccessful db insert, flash an error instead.
   # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
   # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/

@@ -5,14 +5,11 @@
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import Flask, render_template, request, Response, flash, redirect, url_for,jsonify
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging import Formatter, FileHandler
-from flask_wtf import Form
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql.schema import ForeignKey
 from sqlalchemy.sql.sqltypes import ARRAY
 from forms import *
 from flask_migrate import Migrate
@@ -32,7 +29,7 @@ migrate = Migrate(app, db)
 
 # TODO: connect to a local postgresql database
 app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres:123@localhost:5434/fyyur"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # to supress the notification
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = True  # to supress the notification
 # ----------------------------------------------------------------------------#
 # Models.
 # ----------------------------------------------------------------------------#
@@ -229,6 +226,7 @@ def create_venue_submission():
             address=res["address"],
             phone=res["phone"],
             genres=res.getlist('genres'),
+            # looking_for=bool(res['seeking_talent']),
             facebook_link=res["facebook_link"],
             image_link=res["image_link"],
             website_link=res["website_link"],
@@ -264,10 +262,19 @@ def create_venue_submission():
 def delete_venue(venue_id):
     # TODO: Complete this endpoint for taking a venue_id, and using
     # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
-
+    flag = False
+    try:
+        Venue.query.filter(Venue.id==venue_id).delete()
+        db.session.commit()
+        flash(f"Venue with {venue_id=} has been deleted successfully")
+    except:
+        flag = True
+        db.session.rollback()
+        print(sys.exc_info())
+        flash(f"Venue with {venue_id=} has not been deleted")
     # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
     # clicking that button delete it from the db then redirect the user to the homepage
-    return None
+    return jsonify(dict(redirect=url_for('index')))
 
 
 #  Artists

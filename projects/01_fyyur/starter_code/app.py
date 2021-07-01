@@ -241,16 +241,13 @@ def create_venue_submission():
             state=res["state"],
             address=res["address"],
             phone=res["phone"],
+            looking_for = bool(res.get("seeking_talent")),
             genres=res.getlist("genres"),
             facebook_link=res["facebook_link"],
             image_link=res["image_link"],
             website_link=res["website_link"],
             seeking_description=res["seeking_description"],
         )
-        try:
-            venue.looking_for = bool(res["seeking_talent"])
-        except:
-            venue.looking_for = False
         db.session.add(venue)
         db.session.commit()
     except:
@@ -305,16 +302,14 @@ def search_artists():
     # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
     # seach for "A" should return "Guns N Petals", "Matt Quevado", and "The Wild Sax Band".
     # search for "band" should return "The Wild Sax Band".
+    query = db.session.query(Artist.id,Artist.name).filter(Artist.name.ilike('%'+request.form['search_term']+'%'))
+    data = [row._asdict() for row in query]
+
     response = {
-        "count": 1,
-        "data": [
-            {
-                "id": 4,
-                "name": "Guns N Petals",
-                "num_upcoming_shows": 0,
-            }
-        ],
+        "count": len(data),
+        "data":data,
     }
+
     return render_template(
         "pages/search_artists.html",
         results=response,
@@ -392,6 +387,16 @@ def edit_venue(venue_id):
 def edit_venue_submission(venue_id):
     # TODO: take values from the form submitted, and update existing
     # venue record with ID <venue_id> using the new attributes
+    new_info = request.form.to_dict(flat=False)#write a helper method to remove lists with one elements
+    print(new_info)
+    try:
+        db.session.query(Venue).filter_by(id=venue_id).update(new_info)
+        db.session.commit()
+        flash(f"Venue with {venue_id=} has been edited successfully")
+    except:
+        db.session.rollback()
+        print(sys.exc_info())
+        flash(f"ERROR. Venue with {venue_id=} has not been edited")
     return redirect(url_for("show_venue", venue_id=venue_id))
 
 
@@ -420,16 +425,12 @@ def create_artist_submission():
             state=res["state"],
             phone=res["phone"],
             genres=res.getlist("genres"),
+            looking_for_venues = bool(res.get("seeking_venue")),
             facebook_link=res["facebook_link"],
             image_link=res["image_link"],
             website_link=res["website_link"],
             seeking_description=res["seeking_description"],
         )
-        try:
-            print(bool(res["seeking_venue"]))
-            artist.looking_for_venues = bool(res["seeking_venue"])
-        except:
-            artist.looking_for_venues = False
         db.session.add(artist)
         db.session.commit()
     except:

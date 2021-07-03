@@ -57,7 +57,7 @@ class Venue(db.Model):
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
     website_link = db.Column(db.String(120))
-    looking_for = db.Column(db.Boolean)
+    seeking_talent = db.Column(db.Boolean)
     seeking_description = db.Column(db.String())
 
     artists = db.relationship("Artist", secondary="Show")
@@ -77,7 +77,7 @@ class Artist(db.Model):
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
     website_link = db.Column(db.String(120))
-    looking_for_venues = db.Column(db.Boolean())
+    seeking_venue= db.Column(db.Boolean())
     seeking_description = db.Column(db.String())
     venues = db.relationship("Venue", secondary="Show")
 
@@ -121,7 +121,14 @@ app.jinja_env.filters["datetime"] = format_datetime
 def index():
     return render_template("pages/home.html")
 
-
+# ----------------------------------------------------------------------------#
+# Helper functions.
+# ----------------------------------------------------------------------------#
+def dictHelp(dict):
+    for key in dict:
+        if len(dict[key]) <=1 and key.strip() != 'genres':
+            dict[key] = dict[key][0]
+    return dict
 #  Venues
 #  ----------------------------------------------------------------
 
@@ -206,7 +213,7 @@ def show_venue(venue_id):
         "phone": ven.phone,
         "website": ven.website_link,
         "facebook_link": ven.facebook_link,
-        "seeking_talent": ven.looking_for,
+        "seeking_talent": ven.seeking_talent,
         "seeking_description": ven.seeking_description,
         "image_link": ven.image_link,
         "past_shows": past_shows,
@@ -241,7 +248,7 @@ def create_venue_submission():
             state=res["state"],
             address=res["address"],
             phone=res["phone"],
-            looking_for = bool(res.get("seeking_talent")),
+            seeking_talent= bool(res.get("seeking_talent")),
             genres=res.getlist("genres"),
             facebook_link=res["facebook_link"],
             image_link=res["image_link"],
@@ -346,7 +353,7 @@ def show_artist(artist_id):
         "phone": art.phone,
         "website": art.website_link,
         "facebook_link": art.facebook_link,
-        "seeking_venue": art.looking_for_venues,
+        "seeking_venue": art.seeking_venue,
         "seeking_description": art.seeking_description,
         "image_link": art.image_link,
         "past_shows": past_shows,
@@ -371,6 +378,17 @@ def edit_artist(artist_id):
 def edit_artist_submission(artist_id):
     # TODO: take values from the form submitted, and update existing
     # artist record with ID <artist_id> using the new attributes
+    new_info = dictHelp(request.form.to_dict(flat=False))
+
+    new_info['seeking_venue']= bool(new_info.get('seeking_venue'))
+    try:
+        db.session.query(Artist).filter_by(id=artist_id).update(new_info)
+        db.session.commit()
+        flash(f"Venue with {artist_id=} has been edited successfully")
+    except:
+        db.session.rollback()
+        print(sys.exc_info())
+        flash(f"ERROR. Venue with {artist_id=} has not been edited")
 
     return redirect(url_for("show_artist", artist_id=artist_id))
 
@@ -387,8 +405,10 @@ def edit_venue(venue_id):
 def edit_venue_submission(venue_id):
     # TODO: take values from the form submitted, and update existing
     # venue record with ID <venue_id> using the new attributes
-    new_info = request.form.to_dict(flat=False)#write a helper method to remove lists with one elements
-    print(new_info)
+    #to_dict() returns  key -> [value], so helping method makes it key -> value if the list of length 1 
+    new_info = dictHelp(request.form.to_dict(flat=False))
+
+    new_info['seeking_talent']= bool(new_info.get('seeking_talent'))
     try:
         db.session.query(Venue).filter_by(id=venue_id).update(new_info)
         db.session.commit()
@@ -425,7 +445,7 @@ def create_artist_submission():
             state=res["state"],
             phone=res["phone"],
             genres=res.getlist("genres"),
-            looking_for_venues = bool(res.get("seeking_venue")),
+            seeking_venue = bool(res.get("seeking_venue")),
             facebook_link=res["facebook_link"],
             image_link=res["image_link"],
             website_link=res["website_link"],

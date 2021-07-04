@@ -23,6 +23,7 @@ from sqlalchemy.sql.sqltypes import ARRAY
 from forms import *
 from flask_migrate import Migrate
 from sqlalchemy.sql import text
+from flask_wtf import CsrfProtect
 
 from datetime import datetime
 import sys
@@ -36,6 +37,7 @@ moment = Moment(app)
 app.config.from_object("config")
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+csrf = CsrfProtect(app)
 
 # TODO: connect to a local postgresql database
 
@@ -251,24 +253,31 @@ def create_venue_form():
 def create_venue_submission():
     # TODO: insert form data as a new Venue record in the db, instead
     # TODO: modify data to be the data object returned from db insertion
-    try:
-        res = dictHelp(request.form.to_dict(flat=False))
-        res['seeking_talent'] = bool(res.get('seeking_talant'))
-        #unpack values of res
-        venue = Venue(**res)
-        db.session.add(venue)
-        db.session.commit()
-        flash("Venue " + res["name"] + " was successfully listed!")
-    except:
-        db.session.rollback()
-        print(sys.exc_info())
-        flash(
-            "An error occurred. "
-            + res["name"]
-            + " Venue could not be listed."
-        )
-    finally:
-        db.session.close()
+    form = VenueForm(request.form)
+    if form.validate():
+        try:
+            res = dictHelp(request.form.to_dict(flat=False))
+            res['seeking_talent'] = bool(res.get('seeking_talant'))
+            res.pop('csrf_token')
+            #unpack values of res
+            venue = Venue(**res)
+            db.session.add(venue)
+            db.session.commit()
+            flash("Venue " + res["name"] + " was successfully listed!")
+        except:
+            db.session.rollback()
+            print(sys.exc_info())
+            flash(
+                "An error occurred. "
+                + res["name"]
+                + " Venue could not be listed."
+                ,'error'
+            )
+        finally:
+            db.session.close()
+    else:
+        flash(f'Error {form.errors}')
+        return render_template('forms/new_venue.html',form=form)
     # on successful db insert, flash success
     # TODO: on unsuccessful db insert, flash an error instead.
     # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
@@ -287,7 +296,7 @@ def delete_venue(venue_id):
     except:
         db.session.rollback()
         print(sys.exc_info())
-        flash(f"Venue with {venue_id=} has not been deleted")
+        flash(f"Venue with {venue_id=} has not been deleted",'error')
     finally:
         db.session.close()
     # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
@@ -381,20 +390,24 @@ def edit_artist(artist_id):
 def edit_artist_submission(artist_id):
     # TODO: take values from the form submitted, and update existing
     # artist record with ID <artist_id> using the new attributes
-    new_info = dictHelp(request.form.to_dict(flat=False))
-
-    new_info["seeking_venue"] = bool(new_info.get("seeking_venue"))
-    try:
-        db.session.query(Artist).filter_by(id=artist_id).update(new_info)
-        db.session.commit()
-        flash(f"Artist with {artist_id=} has been edited successfully")
-    except:
-        db.session.rollback()
-        print(sys.exc_info())
-        flash(f"ERROR. Artist with {artist_id=} has not been edited")
-    finally:
-        db.session.close()
-
+    form = ArtistForm(request.form)
+    if form.validate():
+        try:
+            new_info = dictHelp(request.form.to_dict(flat=False))
+            new_info["seeking_venue"] = bool(new_info.get("seeking_venue"))
+            new_info.pop('csrf_token')
+            db.session.query(Artist).filter_by(id=artist_id).update(new_info)
+            db.session.commit()
+            flash(f"Artist with {artist_id=} has been edited successfully")
+        except:
+            db.session.rollback()
+            print(sys.exc_info())
+            flash(f"ERROR. Artist with {artist_id=} has not been edited",'error')
+        finally:
+            db.session.close()
+    else:
+        flash(f"Error {form.errors}",'error')
+        return render_template('forms/edit_artist.html',form=form,artist=Artist.query.get(artist_id))
     return redirect(url_for("show_artist", artist_id=artist_id))
 
 
@@ -411,19 +424,24 @@ def edit_venue_submission(venue_id):
     # TODO: take values from the form submitted, and update existing
     # venue record with ID <venue_id> using the new attributes
     # to_dict() returns  key -> [value], so helping method makes it key -> value if the list of length 1
-    new_info = dictHelp(request.form.to_dict(flat=False))
-
-    new_info["seeking_talent"] = bool(new_info.get("seeking_talent"))
-    try:
-        db.session.query(Venue).filter_by(id=venue_id).update(new_info)
-        db.session.commit()
-        flash(f"Venue with {venue_id=} has been edited successfully")
-    except:
-        db.session.rollback()
-        print(sys.exc_info())
-        flash(f"ERROR. Venue with {venue_id=} has not been edited")
-    finally:
-        db.session.close()
+    form = VenueForm(request.form)
+    if form.validate():
+        try:
+            new_info = dictHelp(request.form.to_dict(flat=False))
+            new_info["seeking_talent"] = bool(new_info.get("seeking_talent"))
+            new_info.pop('csrf_token')
+            db.session.query(Venue).filter_by(id=venue_id).update(new_info)
+            db.session.commit()
+            flash(f"Venue with {venue_id=} has been edited successfully")
+        except:
+            db.session.rollback()
+            print(sys.exc_info())
+            flash(f"ERROR. Venue with {venue_id=} has not been edited",'error')
+        finally:
+            db.session.close()
+    else:
+        flash(f'Errors {form.errors}','error')
+        return render_template('forms/edit_venue.html',form=form,venue=Venue.query.get(venue_id))
     return redirect(url_for("show_venue", venue_id=venue_id))
 
 
@@ -442,25 +460,31 @@ def create_artist_submission():
     # called upon submitting the new artist listing form
     # TODO: insert form data as a new Venue record in the db, instead
     # TODO: modify data to be the data object returned from db insertion
-
-    try:
-        res = dictHelp(request.form.to_dict(flat=False))
-        res['seeking_venue'] = bool(res.get('seeking_venue'))
-        artist = Artist(**res)
-        db.session.add(artist)
-        db.session.commit()
-        flash("Artist " + request.form["name"] + " was successfully listed!")
-    except:
-        flag = True
-        db.session.rollback()
-        print(sys.exc_info())
-        flash(
-            "An error occurred. Artist "
-            + request.form["name"]
-            + " could not be listed."
-        )
-    finally:
-        db.session.close()
+    form = ArtistForm(request.form)
+    if form.validate():
+        try:
+            res = dictHelp(request.form.to_dict(flat=False))
+            res['seeking_venue'] = bool(res.get('seeking_venue'))    
+            res.pop('csrf_token')
+            #unpack result
+            artist = Artist(**res)
+            db.session.add(artist)
+            db.session.commit()
+            flash("Artist " + request.form["name"] + " was successfully listed!")
+        except:
+            flag = True
+            db.session.rollback()
+            print(sys.exc_info())
+            flash(
+                "An error occurred. Artist "
+                + request.form["name"]
+                + " could not be listed."
+            )
+        finally:
+            db.session.close()
+    else:
+        flash(f"Error {form.errors}",'error')
+        return render_template('forms/new_artist.html',form=form)
 
     # on successful db insert, flash success
     # flash("Artist " + request.form["name"] + " was successfully listed!")

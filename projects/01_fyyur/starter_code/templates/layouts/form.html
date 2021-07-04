@@ -37,19 +37,22 @@
 <body class="form-only-page">
 
   <div class="container">
-
     {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        {% for message in messages %}
-          <div class="alert alert-warning fade in">
-            <a class="close" data-dismiss="alert">&times;</a>
-            {{ message }}
-          </div>
-        {% endfor %}
-      {% endif %}
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-warning fade in">
+      <a class="close" data-dismiss="alert">&times;</a>
+      {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
     {% endwith %}
-
-    {% block content %}{% endblock %}
+    
+    {% block content %}
+      <form method="post">
+        {{ form.csrf_token }}
+      </form>
+    {% endblock %}
 
   </div>
 

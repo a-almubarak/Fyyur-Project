@@ -10,4 +10,6 @@ DEBUG = True
 
 
 # TODO IMPLEMENT DATABASE URL
-SQLALCHEMY_DATABASE_URI = '<Put your local database url>'
+#note: on my device the default port$ was '5434' the default port# for psql in general is '5432'
+SQLALCHEMY_DATABASE_URI = "postgresql://postgres:123@localhost:5434/fyyur"
+SQLALCHEMY_TRACK_MODIFICATIONS = False

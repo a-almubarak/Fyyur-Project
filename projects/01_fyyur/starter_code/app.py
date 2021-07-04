@@ -38,8 +38,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 # TODO: connect to a local postgresql database
-app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres:123@localhost:5434/fyyur"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # to supress the notification
+
 # ----------------------------------------------------------------------------#
 # Models.
 # ----------------------------------------------------------------------------#
@@ -49,12 +48,12 @@ class Venue(db.Model):
     __tablename__ = "Venue"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
+    name = db.Column(db.String,nullable=False)
+    city = db.Column(db.String(120),nullable=False)
+    state = db.Column(db.String(120),nullable=False)
+    address = db.Column(db.String(120),nullable=False)
     phone = db.Column(db.String(120))
-    genres = db.Column(ARRAY(db.String(120)))
+    genres = db.Column(db.ARRAY(db.String(120)),nullable=False)
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
     website_link = db.Column(db.String(120))
@@ -70,11 +69,11 @@ class Artist(db.Model):
     __tablename__ = "Artist"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
+    name = db.Column(db.String,nullable=False)
+    city = db.Column(db.String(120),nullable=False)
+    state = db.Column(db.String(120),nullable=False)
     phone = db.Column(db.String(120))
-    genres = db.Column(ARRAY(db.String(120)))
+    genres = db.Column(db.ARRAY(db.String(120)),nullable=False)
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
     website_link = db.Column(db.String(120))
@@ -90,8 +89,8 @@ class Artist(db.Model):
 class Show(db.Model):
     __tablename__ = "Show"
     id = db.Column(db.Integer, primary_key=True)
-    artist_id = db.Column(db.Integer, db.ForeignKey("Artist.id"))
-    venue_id = db.Column(db.Integer, db.ForeignKey("Venue.id"))
+    artist_id = db.Column(db.Integer, db.ForeignKey("Artist.id",ondelete='CASCADE',onupdate='CASCADE'))
+    venue_id = db.Column(db.Integer, db.ForeignKey("Venue.id",ondelete='CASCADE',onupdate='CASCADE'))
     start_time = db.Column(db.String, nullable=False)
 
     artist = db.relationship("Artist", back_populates="venues")
@@ -204,19 +203,18 @@ def show_venue(venue_id):
     query1 = (
         db.session.query(Artist.id, Artist.name, Artist.image_link, Show.start_time)
         .join(Show)
-        .filter(ven.id == Show.venue_id , today > Show.start_time)
+        .filter(ven.id == Show.venue_id, today > Show.start_time)
         .all()
     )
     query2 = (
         db.session.query(Artist.id, Artist.name, Artist.image_link, Show.start_time)
         .join(Show)
-        .filter(ven.id == Show.venue_id ,today < Show.start_time)
+        .filter(ven.id == Show.venue_id, today < Show.start_time)
         .all()
     )
-    print(today)
-    keys = ['artist_id','artist_name','artist_image_link','start_time']
-    past_shows = [keyedDict(row,keys) for row in query1]
-    upcoming_shows = [keyedDict(row,keys) for row in query2]
+    keys = ["artist_id", "artist_name", "artist_image_link", "start_time"]
+    past_shows = [keyedDict(row, keys) for row in query1]
+    upcoming_shows = [keyedDict(row, keys) for row in query2]
     data = {
         "id": ven.id,
         "name": ven.name,
@@ -253,25 +251,24 @@ def create_venue_form():
 def create_venue_submission():
     # TODO: insert form data as a new Venue record in the db, instead
     # TODO: modify data to be the data object returned from db insertion
-    flag = False
     try:
         res = dictHelp(request.form.to_dict(flat=False))
+        res['seeking_talent'] = bool(res.get('seeking_talant'))
+        #unpack values of res
         venue = Venue(**res)
         db.session.add(venue)
         db.session.commit()
+        flash("Venue " + res["name"] + " was successfully listed!")
     except:
-        flag = True
         db.session.rollback()
         print(sys.exc_info())
+        flash(
+            "An error occurred. "
+            + res["name"]
+            + " Venue could not be listed."
+        )
     finally:
-        if not flag:
-            flash("Venue " + request.form["name"] + " was successfully listed!")
-        else:
-            flash(
-                "An error occurred. "
-                + request.form["name"]
-                + " Venue could not be listed."
-            )
+        db.session.close()
     # on successful db insert, flash success
     # TODO: on unsuccessful db insert, flash an error instead.
     # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
@@ -291,6 +288,8 @@ def delete_venue(venue_id):
         db.session.rollback()
         print(sys.exc_info())
         flash(f"Venue with {venue_id=} has not been deleted")
+    finally:
+        db.session.close()
     # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
     # clicking that button delete it from the db then redirect the user to the homepage
     return jsonify(dict(redirect=url_for("index")))
@@ -336,18 +335,18 @@ def show_artist(artist_id):
     query1 = (
         db.session.query(Venue.id, Venue.name, Venue.image_link, Show.start_time)
         .join(Show)
-        .filter(art.id == Show.artist_id ,today > Show.start_time)
+        .filter(art.id == Show.artist_id, today > Show.start_time)
         .all()
     )
     query2 = (
         db.session.query(Venue.id, Venue.name, Venue.image_link, Show.start_time)
         .join(Show)
-        .filter(art.id == Show.artist_id , today < Show.start_time)
+        .filter(art.id == Show.artist_id, today < Show.start_time)
         .all()
     )
-    keys = ['venue_id','venue_name','venue_image_link','start_time']
-    past_shows = [keyedDict(row,keys) for row in query1]
-    upcoming_shows = [keyedDict(row,keys) for row in query2]
+    keys = ["venue_id", "venue_name", "venue_image_link", "start_time"]
+    past_shows = [keyedDict(row, keys) for row in query1]
+    upcoming_shows = [keyedDict(row, keys) for row in query2]
     data = {
         "id": art.id,
         "name": art.name,
@@ -393,6 +392,8 @@ def edit_artist_submission(artist_id):
         db.session.rollback()
         print(sys.exc_info())
         flash(f"ERROR. Artist with {artist_id=} has not been edited")
+    finally:
+        db.session.close()
 
     return redirect(url_for("show_artist", artist_id=artist_id))
 
@@ -421,6 +422,8 @@ def edit_venue_submission(venue_id):
         db.session.rollback()
         print(sys.exc_info())
         flash(f"ERROR. Venue with {venue_id=} has not been edited")
+    finally:
+        db.session.close()
     return redirect(url_for("show_venue", venue_id=venue_id))
 
 
@@ -439,26 +442,25 @@ def create_artist_submission():
     # called upon submitting the new artist listing form
     # TODO: insert form data as a new Venue record in the db, instead
     # TODO: modify data to be the data object returned from db insertion
-    flag = False
+
     try:
         res = dictHelp(request.form.to_dict(flat=False))
-        # print(res)
+        res['seeking_venue'] = bool(res.get('seeking_venue'))
         artist = Artist(**res)
         db.session.add(artist)
         db.session.commit()
+        flash("Artist " + request.form["name"] + " was successfully listed!")
     except:
         flag = True
         db.session.rollback()
         print(sys.exc_info())
+        flash(
+            "An error occurred. Artist "
+            + request.form["name"]
+            + " could not be listed."
+        )
     finally:
-        if not flag:
-            flash("Artist " + request.form["name"] + " was successfully listed!")
-        else:
-            flash(
-                "An error occurred. Artist "
-                + request.form["name"]
-                + " could not be listed."
-            )
+        db.session.close()
 
     # on successful db insert, flash success
     # flash("Artist " + request.form["name"] + " was successfully listed!")
@@ -526,6 +528,8 @@ def create_show_submission():
         db.session.rollback()
         print(sys.exc_info())
         flash("An error occured. Show could not be listed.")
+    finally:
+        db.session.close()
     # on successful db insert, flash success
     # TODO: on unsuccessful db insert, flash an error instead.
     # e.g., flash('An error occurred. Show could not be listed.')

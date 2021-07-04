@@ -289,15 +289,20 @@ def create_venue_submission():
 def delete_venue(venue_id):
     # TODO: Complete this endpoint for taking a venue_id, and using
     # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
+    flag = False
     try:
         Venue.query.filter(Venue.id == venue_id).delete()
         db.session.commit()
-        flash(f"Venue with {venue_id=} has been deleted successfully")
     except:
         db.session.rollback()
         print(sys.exc_info())
-        flash(f"Venue with {venue_id=} has not been deleted",'error')
+        flag = True
     finally:
+        if not flag:
+            flash(f"Venue with {venue_id=} has been deleted successfully")
+        else:
+            flash(f"Venue with {venue_id=} has not been deleted")
+            
         db.session.close()
     # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
     # clicking that button delete it from the db then redirect the user to the homepage

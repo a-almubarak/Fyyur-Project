@@ -472,7 +472,7 @@ def create_artist_submission():
             res = dictHelp(request.form.to_dict(flat=False))
             res['seeking_venue'] = bool(res.get('seeking_venue'))    
             res.pop('csrf_token')
-            #unpack result
+            #unpack result, this idea was found on stackoverflow
             artist = Artist(**res)
             db.session.add(artist)
             db.session.commit()

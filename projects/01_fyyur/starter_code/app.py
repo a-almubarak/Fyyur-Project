@@ -23,7 +23,7 @@ from sqlalchemy.sql.sqltypes import ARRAY
 from forms import *
 from flask_migrate import Migrate
 from sqlalchemy.sql import text
-from flask_wtf import CsrfProtect
+from flask_wtf import CSRFProtect
 
 from datetime import datetime
 import sys
@@ -37,7 +37,7 @@ moment = Moment(app)
 app.config.from_object("config")
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-csrf = CsrfProtect(app)
+csrf = CSRFProtect(app)
 
 # TODO: connect to a local postgresql database
 
@@ -128,13 +128,14 @@ def index():
 # ----------------------------------------------------------------------------#
 # Helper functions.
 # ----------------------------------------------------------------------------#
+#some dict. are key -> [value], this fucntion returns key -> value if [value] is of length of 1
 def dictHelp(dict):
     for key in dict:
         if len(dict[key]) <= 1 and key.strip() != "genres":
             dict[key] = dict[key][0]
     return dict
 
-
+#change the name of the keys.
 def keyedDict(tuple, keys):
     return {keys[i]: tuple[i] for i in range(len(keys))}
 
@@ -545,7 +546,6 @@ def create_show_submission():
     # called to create new shows in the db, upon submitting new show listing form
     # TODO: insert form data as a new Show record in the db, instead
     res = dictHelp(request.form.to_dict(flat=False))
-    print(res)
     try:
         venue = Venue.query.get(int(res["venue_id"]))
         show = Show(start_time=res["start_time"])

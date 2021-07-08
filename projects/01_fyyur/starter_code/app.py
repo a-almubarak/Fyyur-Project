@@ -16,10 +16,8 @@ from flask import (
     jsonify,
 )
 from flask_moment import Moment
-from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging import Formatter, FileHandler
-from sqlalchemy.sql.sqltypes import ARRAY
 from forms import *
 from models import *
 from flask_migrate import Migrate
@@ -36,7 +34,7 @@ import sys
 app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object("config")
-db = SQLAlchemy(app)
+db.init_app(app)
 migrate = Migrate(app, db)
 csrf = CSRFProtect(app)
 
@@ -91,7 +89,6 @@ def keyedDict(tuple, keys):
 #  ----------------------------------------------------------------
 
 
-today = str(datetime.now())
 
 
 @app.route("/venues")
@@ -99,6 +96,7 @@ def venues():
     # TODO: replace with real venues data.
     #       num_shows should be aggregated based on number of upcoming shows per venue.
     data = []
+    today = str(datetime.now())
     for city, state in db.session.query(Venue.city, Venue.state):
         tmp = {}
         tmp["city"] = city
@@ -149,6 +147,7 @@ def search_venues():
 def show_venue(venue_id):
     # shows the venue page with the given venue_id
     # TODO: replace with real venue data from the venues table, using venue_id
+    today = str(datetime.now())
     ven = Venue.query.get(venue_id)
     query1 = (
         db.session.query(Artist.id, Artist.name, Artist.image_link, Show.start_time)
@@ -294,6 +293,7 @@ def show_artist(artist_id):
     # shows the artist page with the given artist_id
     # TODO: replace with real artist data from the artist table, using artist_id
     art = Artist.query.get(artist_id)
+    today = str(datetime.now())
     query1 = (
         db.session.query(Venue.id, Venue.name, Venue.image_link, Show.start_time)
         .join(Show)

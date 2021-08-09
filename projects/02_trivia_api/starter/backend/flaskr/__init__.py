@@ -4,6 +4,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
 
+from werkzeug.exceptions import RequestEntityTooLarge
+
 from models import setup_db, Question, Category
 
 QUESTIONS_PER_PAGE = 10
@@ -16,18 +18,40 @@ def create_app(test_config=None):
   '''
   @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
   '''
-
+  CORS(app)
   '''
   @TODO: Use the after_request decorator to set Access-Control-Allow
   '''
+  @app.after_request
+  def after_request(response):
+    response.headers.add('Access-Control-Allow-Headers','Content-Type,Authorization,true')
+    response.headers.add('Access-Control-Allow-Methods','POST,GET,PATCH,DELETE')
+    return response
 
+  def get_cats():
+    cats = Category.query.all()
+    data = [cat.format() for cat in cats]
+    return data
+  
+  nbQuestions = 10
+  def paginated_questions(request,selection):
+    page = request.args.get('page',1,type=int)
+    start = (page-1)*nbQuestions
+    end = start + nbQuestions
+    questions = selection
+    data = [question.format() for question in questions]
+    return data[start:end]
   '''
   @TODO: 
   Create an endpoint to handle GET requests 
   for all available categories.
   '''
-
-
+  @app.route('/categories')
+  def categories():
+    cats = get_cats()
+    return jsonify({
+      'categories':cats
+    })
   '''
   @TODO: 
   Create an endpoint to handle GET requests for questions, 
@@ -40,6 +64,16 @@ def create_app(test_config=None):
   ten questions per page and pagination at the bottom of the screen for three pages.
   Clicking on the page numbers should update the questions. 
   '''
+  @app.route('/questions',methods=['GET'])
+  def get_question():
+    data = Question.query.all()
+    questions = paginated_questions(request,data)
+    return jsonify({
+      'questions':questions,
+      'totalQuestions':len(data),
+      'categories':get_cats(),
+      'currentCategory':None
+    })
 
   '''
   @TODO: 
@@ -48,7 +82,16 @@ def create_app(test_config=None):
   TEST: When you click the trash icon next to a question, the question will be removed.
   This removal will persist in the database and when you refresh the page. 
   '''
-
+  @app.route('/questions/<int:q_id>',methods=['DELETE'])
+  def delete_question(q_id):
+    question = Question.query.get(q_id)
+    if not question:
+      abort(404)
+    question.delete()
+    #check what to return if success
+    return jsonify({
+      'success':True
+    })
   '''
   @TODO: 
   Create an endpoint to POST a new question, 
@@ -59,6 +102,36 @@ def create_app(test_config=None):
   the form will clear and the question will appear at the end of the last page
   of the questions list in the "List" tab.  
   '''
+  #needs review
+  #no need for try..catch for searchTerm
+  @app.route('/questions',methods=['POST'])
+  def post_question():
+    req = request.get_json()
+    if 'question' in req or 'answer' in req or 'difficulty' in req or 'category' in req:
+      question = req.get('question',None)
+      answer = req.get('answer',None)
+      difficulty = req.get('difficulty',None)
+      category = req.get('category',None)
+      try:
+        q = Question(question=question,answer=answer,difficulty=difficulty,category=category)
+        q.insert()
+      except:
+        abort(422)
+    elif 'searchTerm' in req:
+      search_term= req['searchTerm']
+      try:
+        selection = Question.query.filter(Question.question.ilike(f'%{search_term}%'))
+        qs = paginated_questions(request,selection)
+        return jsonify({
+          'questions':qs,
+          'totalQuestions':len(selection.all()),
+          'currentCategory':None
+        })
+      except:
+        abort(422)
+    else:
+      abort(400)  
+
 
   '''
   @TODO: 
@@ -70,7 +143,7 @@ def create_app(test_config=None):
   only question that include that string within their question. 
   Try using the word "title" to start. 
   '''
-
+  #done
   '''
   @TODO: 
   Create a GET endpoint to get questions based on category. 
@@ -79,7 +152,21 @@ def create_app(test_config=None):
   categories in the left column will cause only questions of that 
   category to be shown. 
   '''
-
+  @app.route('/categories/<int:cat_id>/questions')
+  def questions_for_cateogorie(cat_id):
+    category = Category.query.get(cat_id)
+    if not category:
+      abort(404)
+    else:
+      selection = Question.query.filter_by(category=cat_id)
+      #what if there's no questions ?
+      qs = paginated_questions(request,selection)
+      return jsonify({
+        'questions':qs,
+        'totalQuestions':len(selection.all()),
+        'currentCategory':None
+      })
+    
 
   '''
   @TODO: 

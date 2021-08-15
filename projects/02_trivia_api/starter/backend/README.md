@@ -40,67 +40,116 @@ flask run --reload
 
 The `--reload` flag will detect file changes and restart the server automatically.
 
-## ToDo Tasks
-These are the files you'd want to edit in the backend:
-
-1. *./backend/flaskr/`__init__.py`*
-2. *./backend/test_flaskr.py*
-
-
-One note before you delve into your tasks: for each endpoint, you are expected to define the endpoint and response data. The frontend will be a plentiful resource because it is set up to expect certain endpoints and response data formats already. You should feel free to specify endpoints in your own way; if you do so, make sure to update the frontend or you will get some unexpected behavior. 
-
-1. Use Flask-CORS to enable cross-domain requests and set response headers. 
-
-
-2. Create an endpoint to handle GET requests for questions, including pagination (every 10 questions). This endpoint should return a list of questions, number of total questions, current category, categories. 
-
-
-3. Create an endpoint to handle GET requests for all available categories. 
-
-
-4. Create an endpoint to DELETE question using a question ID. 
-
-
-5. Create an endpoint to POST a new question, which will require the question and answer text, category, and difficulty score. 
-
-
-6. Create a POST endpoint to get questions based on category. 
-
-
-7. Create a POST endpoint to get questions based on a search term. It should return any questions for whom the search term is a substring of the question. 
-
-
-8. Create a POST endpoint to get questions to play the quiz. This endpoint should take category and previous question parameters and return a random questions within the given category, if provided, and that is not one of the previous questions. 
-
-
-9. Create error handlers for all expected errors including 400, 404, 422 and 500. 
-
-
-
-## Review Comment to the Students
+## Endpoint documentation
 ```
-This README is missing documentation of your endpoints. Below is an example for your endpoint to get all categories. Please use it as a reference for creating your documentation and resubmit your code. 
-
-Endpoints
-GET '/api/v1.0/categories'
-GET ...
-POST ...
-DELETE ...
-
-GET '/api/v1.0/categories'
+GET '/categories'
 - Fetches a dictionary of categories in which the keys are the ids and the value is the corresponding string of the category
 - Request Arguments: None
 - Returns: An object with a single key, categories, that contains a object of id: category_string key:value pairs. 
-{'1' : "Science",
-'2' : "Art",
-'3' : "Geography",
-'4' : "History",
-'5' : "Entertainment",
-'6' : "Sports"}
-
+{
+    'categories':{'1' : "Science",
+    '2' : "Art",
+    '3' : "Geography",
+    '4' : "History",
+    '5' : "Entertainment",
+    '6' : "Sports"}
+}
+```
+```
+GET '/questions?page=${integer}'
+- Fetches a paginated set of questions, all of their categories, and total number of questions.
+- Request Arguments: page - integer.
+- Returns: An object with 10 paginated questions, total questions, object with all categories and string contain the current category.
+{
+    'questions':[{
+        'id':1,
+        'question':'this is questions',
+        'answer':'an answer',
+        'difficulty':3,
+        'category':3
+    }],
+    'totalQuestions':18,
+    'categories':{
+        '1':'Science',
+        '2':'History',
+        ...
+    },
+    'currentCategory':'Science'
+} 
+```
+```
+DELETE '/questions/${id}'
+- Delete the question with the given id.
+- Request Argument: id - integer.
+- Returns: No data besides HTTP Status Code.
+```
+```
+GET '/categories/${id}/questions
+- Fetches questions for a category given the id of the category.
+- Request Argument: id - integer.
+- Returns: An object with 10 paginated questions for the given category, total number of questions and the current category.
+{
+    'questions':[{
+        'id':2,
+        'questions':'a questions',
+        'answer':'an answer',
+        'difficulty':2,
+        'category':3
+    }],
+    'totalQuestions':19,
+    'currentCategory':'Science'
+}
+```
+```
+POST '/quizzes'
+- Sends a post request to get the next question.
+- Request Argument:
+{
+    'previous_questions': an array of question ids such as[1,2,3],
+    'quiz_category':a string of the current category.
+}
+- Returns: An object with question details.
+{
+    'id':1,
+    'questions':'Question',
+    'answer':'Answer',
+    'difficulty':4,
+    'category':3
+}
+```
+```
+post '/questions'
+- Send Post request to search for questions that contains a given term.
+- Request Argument: 
+{
+    'searchTerm':'a search term'
+}
+- Returns: An object that contains an array of questions that contains the search term, the total number of questions that contains the term and the current category.
+{
+    'questions':[{
+        'id':1,
+        'question':'a question',
+        'answer':'an answer',
+        'difficulty':2,
+        'category':4
+    }]
+    'totalQuestions':13,
+    'currentCategory':'History
+}
 ```
 
-
+```
+post '/questions'
+- Send Post request to add a new question.
+- Request Argument: 
+{
+    'question':'this is question',
+    'answer':'this is answer',
+    'difficulty':4,
+    'category':5
+}
+- Returns: Does not return any new data.
+```
 ## Testing
 To run the tests, run
 ```

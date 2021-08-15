@@ -1,4 +1,5 @@
 import os
+import sys
 from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -36,8 +37,7 @@ def create_app(test_config=None):
 
     def get_cats():
         cats = Category.query.all()
-        data = [cat.format() for cat in cats]
-        return data
+        return {category.id:category.type for category in cats}
 
     nbQuestions = 10
 
@@ -124,6 +124,7 @@ def create_app(test_config=None):
             answer = req.get('answer', None)
             difficulty = req.get('difficulty', None)
             category = req.get('category', None)
+            print(question,answer,difficulty,category)
             try:
                 q = Question(question=question, answer=answer,
                              difficulty=difficulty, category=category)
@@ -195,29 +196,33 @@ def create_app(test_config=None):
   one question at a time is displayed, the user is allowed to answer
   and shown whether they were correct or not. 
   '''
+  #quiz_category: { type: ... , id: ...}
     @app.route('/quizzes', methods=['POST'])
     def quiz():
         body = request.get_json()
-        print(body)
-        if 'quiz_category' in body and 'previous_questions' in body:
-            prev_q = list(body['previous_questions'])
-            cat = body['quiz_category']
+        previous_questions = body.get('previous_questions',None)
+        quiz_category = body.get('quiz_category',None)
+        try:
+            category_id = quiz_category.get('id')
             question = None
-            if prev_q:
-                question = Question.query.filter(
-                    Question.category == cat and Question.id not in prev_q).one_or_none()
-            if question is None:
-                question = Question.query.filter(
-                    Question.category == cat).one_or_none()
-            if question is None:
-                abort(422)
+            if previous_questions:
+                if category_id==0:
+                    question = random.choice(Question.query.filter(Question.id not in previous_questions).all())
+                else:
+                    question = random.choice(Question.query.filter(Question.category == category_id and Question.id not in previous_questions).all())
+            else:
+                if category_id == 0:
+                    question = random.choice(Question.query.all())
+                else:
+                    question = random.choice(Question.query.filter(Question.category==category_id).all())
             return jsonify({
-                'success': True,
-                'question': question.format()
+                'success':True,
+                'question':question.format()
             })
-        else:
-            abort(400)
-
+        except:
+            print(sys.exc_info())
+            abort(422) 
+            
     '''
   @TODO: 
   Create error handlers for all expected errors 
@@ -246,5 +251,13 @@ def create_app(test_config=None):
             'error': 422,
             'message': 'unprocessable',
         }), 422
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        return jsonify({
+            'success':False,
+            'error':500,
+            'message':'internal error'
+        }), 500
 
     return app

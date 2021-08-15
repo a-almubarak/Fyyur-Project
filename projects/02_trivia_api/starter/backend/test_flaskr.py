@@ -15,7 +15,7 @@ class TriviaTestCase(unittest.TestCase):
         """Define test variables and initialize app."""
         self.app = create_app()
         self.client = self.app.test_client
-        self.database_name = "trivia"
+        self.database_name = "trivia_test"
         self.database_path = "postgresql://{}/{}".format('postgres:123@localhost:5434', self.database_name)
         setup_db(self.app, self.database_path)
 
@@ -125,8 +125,31 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['questions'],questions)
         self.assertEqual(data['totalQuestions'],len(expected))        
         self.assertFalse(data['currentCategory'])
+    
+    def test_quizzes_422(self):
+        query={
+            'quiz_category':{'id':'123','type':'Sport'},
+            'previous_questions':[1,4,6]
+        }
+        res = self.client().post('/quizzes',json=query)
+        data = json.loads(res.data)
 
+        self.assertEqual(res.status_code,422)
+        self.assertEqual(data['message'],'unprocessable')
+        self.assertFalse(data['success'])
+        
+    def test_quizzes_200(self):
+        query={
+            'quiz_category':{'id':4,'type':'History'},
+            'previous_questions':[4]
+        }
+        res = self.client().post('/quizzes',json=query)
+        data = json.loads(res.data)
 
+        self.assertEqual(res.status_code,200)
+        self.assertTrue(data['success'])
+        self.assertTrue(data['question'])
+        
 # Make the tests conveniently executable
 if __name__ == "__main__":
     unittest.main()

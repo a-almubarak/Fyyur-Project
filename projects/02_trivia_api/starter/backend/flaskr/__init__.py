@@ -32,12 +32,11 @@ def create_app(test_config=None):
                              'POST,GET,PATCH,DELETE')
         return response
 
-
     # helper methods ----------------------------------------------------------------
 
     def get_cats():
         cats = Category.query.all()
-        return {category.id:category.type for category in cats}
+        return {category.id: category.type for category in cats}
 
     nbQuestions = 10
 
@@ -124,7 +123,6 @@ def create_app(test_config=None):
             answer = req.get('answer', None)
             difficulty = req.get('difficulty', None)
             category = req.get('category', None)
-            print(question,answer,difficulty,category)
             try:
                 q = Question(question=question, answer=answer,
                              difficulty=difficulty, category=category)
@@ -200,29 +198,32 @@ def create_app(test_config=None):
     @app.route('/quizzes', methods=['POST'])
     def quiz():
         body = request.get_json()
-        previous_questions = body.get('previous_questions',None)
-        quiz_category = body.get('quiz_category',None)
+        previous_questions = body.get('previous_questions', None)
+        quiz_category = body.get('quiz_category', None)
         try:
             category_id = quiz_category.get('id')
             question = None
             if previous_questions:
-                if category_id==0:
-                    question = random.choice(Question.query.filter(Question.id not in previous_questions).all())
+                if category_id == 0:
+                    question = random.choice(Question.query.filter(
+                        Question.id not in previous_questions).all())
                 else:
-                    question = random.choice(Question.query.filter(Question.category == category_id and Question.id not in previous_questions).all())
+                    question = random.choice(Question.query.filter(
+                        Question.category == category_id and Question.id not in previous_questions).all())
             else:
                 if category_id == 0:
                     question = random.choice(Question.query.all())
                 else:
-                    question = random.choice(Question.query.filter(Question.category==category_id).all())
+                    question = random.choice(Question.query.filter(
+                        Question.category == category_id).all())
             return jsonify({
-                'success':True,
-                'question':question.format()
+                'success': True,
+                'question': question.format()
             })
         except:
             print(sys.exc_info())
-            abort(422) 
-            
+            abort(422)
+
     '''
   @TODO: 
   Create error handlers for all expected errors 
@@ -255,9 +256,9 @@ def create_app(test_config=None):
     @app.errorhandler(500)
     def internal_error(error):
         return jsonify({
-            'success':False,
-            'error':500,
-            'message':'internal error'
+            'success': False,
+            'error': 500,
+            'message': 'internal error'
         }), 500
 
     return app

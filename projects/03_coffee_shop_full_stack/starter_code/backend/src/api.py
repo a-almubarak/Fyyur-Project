@@ -4,7 +4,7 @@ from sqlalchemy import exc
 import json
 from flask_cors import CORS
 
-from .database.models import db_drop_and_create_all, setup_db, Drink
+from .database.models import db_drop_and_create_all, setup_db, Drink,db
 from .auth.auth import AuthError, requires_auth
 
 app = Flask(__name__)
@@ -28,7 +28,17 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
 '''
-
+@app.route('/drinks')
+def drinks():
+    try:
+        drinks = Drink.query.all()
+        data = [drink.short() for drink in drinks]
+        return jsonify({
+            'success':True,
+            'drinks':data
+        })
+    except:
+        abort(422)
 
 '''
 @TODO implement endpoint
@@ -38,7 +48,18 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
 '''
-
+@app.route('/drinks-detail')
+@requires_auth('get:drinks-detail')
+def drinks_detail():
+    try:
+        drinks = Drink.query.all()
+        data = [drink.long() for drink in drinks]
+        return jsonify({
+            'success':True,
+            'drinks':data
+            })
+    except:
+        abort(422)
 
 '''
 @TODO implement endpoint
@@ -49,6 +70,24 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the newly created drink
         or appropriate status code indicating reason for failure
 '''
+@app.route('/drinks',methods=['POST'])
+@requires_auth('post:drinks')
+def post_drinks():
+    body = request.get_json()
+    if 'title' in body and 'recipe' in body:
+       title = body['title'] 
+       recipe = body['recipe']
+       drink = Drink(title=title,recipe=recipe)
+       try:
+           drink.insert()
+           return jsonify({
+               'success':True,
+               'drinks':drink.long()
+           })
+       except:
+           abort(422)
+    else:
+        abort(400)
 
 
 '''
@@ -62,7 +101,23 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the updated drink
         or appropriate status code indicating reason for failure
 '''
-
+@app.route('/drinks/<int:drink_id',methods=['PATCH'])
+@requires_auth('patch:drinks')
+def patch_drink(drink_id):
+    drink = Drink.query.filter(Drink.id==drink_id).one_or_none()
+    if not drink:
+        abort(404)
+    body = request.get_json()
+    if body.get('title',None):
+        drink.title = body['title']
+    if body.get('recipe',None):
+        drink.recipe = body['recipe']
+    drink.update()
+    return jsonify({
+        'success':True,
+        'drinks':drink.long()
+    })
+    
 
 '''
 @TODO implement endpoint
@@ -74,7 +129,21 @@ CORS(app)
     returns status code 200 and json {"success": True, "delete": id} where id is the id of the deleted record
         or appropriate status code indicating reason for failure
 '''
-
+@app.route('/drinks/<int:drink_id>', mehtods=['DELETE'])
+@requires_auth('delete:drinks')
+def delete_drink(drink_id):
+    drink = Drink.query.filter(Drink.id==drink_id).one_or_none()
+    if not drink:
+        abort(404)
+    try:
+        drink.delete()
+        return jsonify({
+            'success':True,
+            'drinks':drink.long()
+        })
+    except:
+        db.session.rollback()
+        abort(500)
 
 # Error Handling
 '''
@@ -101,14 +170,27 @@ def unprocessable(error):
                     }), 404
 
 '''
-
 '''
 @TODO implement error handler for 404
     error handler should conform to general task above
 '''
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({
+        'success':False,
+        'error':404,
+        'message':'resource not found'
+    }),404
 
 
 '''
 @TODO implement error handler for AuthError
     error handler should conform to general task above
 '''
+@app.errorhandler(AuthError)
+def auth_error(error):
+    return jsonify({
+        'success':False,
+        'error':error.status_code,
+        'message':'authentication fails'
+    })

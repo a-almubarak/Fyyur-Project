@@ -40,7 +40,7 @@ def db_drop_and_create_all():
     )
 
 
-drink.insert()
+    drink.insert()
 # ROUTES
 
 '''
@@ -81,7 +81,7 @@ class Drink(db.Model):
         return {
             'id': self.id,
             'title': self.title,
-            'recipe': json.loads(self.recipe)
+            'recipe': json.dumps(self.recipe)
         }
 
     '''

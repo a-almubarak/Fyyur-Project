@@ -1,4 +1,5 @@
 import os
+import sys
 from flask import Flask, request, jsonify, abort
 from sqlalchemy import exc
 import json
@@ -38,7 +39,7 @@ def drinks():
             'drinks':data
         })
     except:
-        abort(422)
+        abort(404)
 
 '''
 @TODO implement endpoint
@@ -59,7 +60,7 @@ def drinks_detail():
             'drinks':data
             })
     except:
-        abort(422)
+        abort(404)
 
 '''
 @TODO implement endpoint
@@ -75,8 +76,8 @@ def drinks_detail():
 def post_drinks():
     body = request.get_json()
     if 'title' in body and 'recipe' in body:
-       title = body['title'] 
-       recipe = body['recipe']
+       title = str(body['title'])
+       recipe = json.dumps(body['recipe'])
        drink = Drink(title=title,recipe=recipe)
        try:
            drink.insert()
@@ -85,6 +86,7 @@ def post_drinks():
                'drinks':drink.long()
            })
        except:
+           print(sys.exc_info())
            abort(422)
     else:
         abort(400)
@@ -101,21 +103,25 @@ def post_drinks():
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the updated drink
         or appropriate status code indicating reason for failure
 '''
-@app.route('/drinks/<int:drink_id',methods=['PATCH'])
+@app.route('/drinks/<int:drink_id>',methods=['PATCH'])
 @requires_auth('patch:drinks')
 def patch_drink(drink_id):
     drink = Drink.query.filter(Drink.id==drink_id).one_or_none()
     if not drink:
         abort(404)
     body = request.get_json()
-    if body.get('title',None):
+    if 'title' in body:
         drink.title = body['title']
-    if body.get('recipe',None):
-        drink.recipe = body['recipe']
-    drink.update()
+    if 'recipe' in body:
+        drink.recipe = json.dumps(body['recipe'])
+    try:
+        drink.update()
+    except:
+        print(sys.exc_info())
+        abort(422)
     return jsonify({
         'success':True,
-        'drinks':drink.long()
+        'drinks':[drink.long()]
     })
     
 
@@ -129,7 +135,7 @@ def patch_drink(drink_id):
     returns status code 200 and json {"success": True, "delete": id} where id is the id of the deleted record
         or appropriate status code indicating reason for failure
 '''
-@app.route('/drinks/<int:drink_id>', mehtods=['DELETE'])
+@app.route('/drinks/<int:drink_id>', methods=['DELETE'])
 @requires_auth('delete:drinks')
 def delete_drink(drink_id):
     drink = Drink.query.filter(Drink.id==drink_id).one_or_none()
@@ -143,7 +149,7 @@ def delete_drink(drink_id):
         })
     except:
         db.session.rollback()
-        abort(500)
+        abort(422)
 
 # Error Handling
 '''
@@ -189,8 +195,6 @@ def not_found(error):
 '''
 @app.errorhandler(AuthError)
 def auth_error(error):
-    return jsonify({
-        'success':False,
-        'error':error.status_code,
-        'message':'authentication fails'
-    })
+    response = jsonify(error.error)
+    response.status_code = error.status_code
+    return response

@@ -1,13 +1,13 @@
 import json
-from flask import request, _request_ctx_stack
+from flask import request, _request_ctx_stack,abort
 from functools import wraps
 from jose import jwt
 from urllib.request import urlopen
 
 
-AUTH0_DOMAIN = 'udacity-fsnd.auth0.com'
+AUTH0_DOMAIN = 'fsnd-cafe.eu.auth0.com'
 ALGORITHMS = ['RS256']
-API_AUDIENCE = 'dev'
+API_AUDIENCE = 'coffee'
 
 ## AuthError Exception
 '''
@@ -32,7 +32,9 @@ class AuthError(Exception):
 '''
 def get_token_auth_header():
     auth = request.headers.get('Authorization',None)
-    if not auth:
+    # print('auth equals to->')
+    # print(auth)
+    if auth is None:
         raise AuthError({
             'code':'authorization_header_missing',
             'description':'Authorization header is excpected'
@@ -71,8 +73,8 @@ def check_permissions(permission, payload):
     if 'permissions' not in payload:
         raise AuthError({
             'code':'invalid_permission',
-            'description':'Unable to find permissions in JWT'},400)
-    if permission not in payload['permission']:
+            'description':'Unable to find permissions in JWT'},403)
+    if permission not in payload['permissions']:
         raise AuthError({
             'code':'unprocessable',
             'description':'Permission not found'},403)   
@@ -99,7 +101,7 @@ def verify_decode_jwt(token):
     for key in keys['keys']:
         if key['kid'] == unvirified_header['kid']:
             rsa_key = {
-                    'kyt': key['kyt'],
+                    'kty': key['kty'],
                     'kid': key['kid'],
                     'use': key['use'],
                     'n': key['n'],
@@ -134,7 +136,7 @@ def verify_decode_jwt(token):
     raise AuthError({
                 'code': 'invalid_header',
                 'description': 'Unable to find the appropriate key.'
-            }, 400)
+            }, 403)
 
 
 '''
@@ -154,7 +156,7 @@ def requires_auth(permission=''):
             token = get_token_auth_header()
             payload = verify_decode_jwt(token)
             check_permissions(permission, payload)
-            return f(payload, *args, **kwargs)
+            return f(*args, **kwargs)
 
         return wrapper
     return requires_auth_decorator
